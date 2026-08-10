@@ -18,4 +18,6 @@ typedef struct {
 KVSStore* kvs_create(size_t capacity);
 void kvs_free(KVSStore *store);
 
+unsigned long hash_key(const char *key, size_t capacity);
+
 #endif

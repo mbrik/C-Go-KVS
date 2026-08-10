@@ -24,3 +24,16 @@ void kvs_free(KVSStore *store) {
     free(store);
     printf("Memory freed successfully!\n");
 }
+ 
+//hashing function
+unsigned long hash_key(const char *key, size_t capacity) {
+    unsigned long hash = 5381;
+    int c;
+
+    while ((c = *key++)) {
+        // hash * 33 + c
+        hash = ((hash << 5) + hash) + c; 
+    }
+
+    return hash % capacity; 
+}
