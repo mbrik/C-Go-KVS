@@ -20,4 +20,8 @@ void kvs_free(KVSStore *store);
 
 unsigned long hash_key(const char *key, size_t capacity);
 
+int kvs_set(KVSStore *store, const char *key, const char *value);
+
+const char* kvs_get(KVSStore *store, const char *key);
+
 #endif
