@@ -17,7 +17,7 @@ import (
 
 var (
 	store *C.KVSStore
-	mu    sync.RWMutex // لحماية محرك C من تضارب الـ Goroutines أثناء العمليات المتزامنة
+	mu    sync.RWMutex // Protects C store from concurrent goroutine data races
 )
 
 type SetPayload struct {
@@ -26,7 +26,7 @@ type SetPayload struct {
 }
 
 func main() {
-	// 1. إنشاء مخزن البيانات (KVS Store) في محرك C
+	// 1. Create the KVS store in the C engine
 	store = C.kvs_create(1024)
 	if store == nil {
 		fmt.Println("Failed to create KVS store in C engine!")
@@ -36,7 +36,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// 2. مسار إضافة أو تعديل البيانات: POST /set
+	// 2. POST /set - Insert or update key-value pair
 	mux.HandleFunc("/set", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed. Use POST", http.StatusMethodNotAllowed)
@@ -44,7 +44,7 @@ func main() {
 		}
 
 		var payload SetPayload
-		// قراءة البيانات من body بصيغة JSON أولاً، وإن تعذر فمن الـ Query Parameters
+		// Read JSON body first; fallback to URL query parameters for backward compatibility
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || payload.Key == "" {
 			payload.Key = r.URL.Query().Get("key")
 			payload.Value = r.URL.Query().Get("value")
@@ -60,7 +60,7 @@ func main() {
 		defer C.free(unsafe.Pointer(cKey))
 		defer C.free(unsafe.Pointer(cVal))
 
-		// قفل الكتابة لمنع التضارب في الذاكرة (Race Conditions)
+		// Acquire write lock to prevent race conditions in C engine
 		mu.Lock()
 		res := C.kvs_set(store, cKey, cVal)
 		mu.Unlock()
@@ -74,7 +74,7 @@ func main() {
 		fmt.Fprintf(w, `{"status":"success","key":"%s"}`, payload.Key)
 	})
 
-	// 3. مسار جلب البيانات: GET /get
+	// 3. GET /get - Retrieve value by key
 	mux.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed. Use GET", http.StatusMethodNotAllowed)
@@ -90,7 +90,7 @@ func main() {
 		cKey := C.CString(key)
 		defer C.free(unsafe.Pointer(cKey))
 
-		// قفل القراءة لتسمح بالقراءات المتزامنة بأمان
+		// Acquire read lock for safe concurrent access
 		mu.RLock()
 		cRetVal := C.kvs_get(store, cKey)
 		mu.RUnlock()
@@ -104,7 +104,7 @@ func main() {
 		}
 	})
 
-	// 4. تشغيل خادم HTTP على المنفذ 8080
+	// 4. Start HTTP server on port 8080
 	fmt.Println("🚀 C-Go-KVS Server running on http://localhost:8080")
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		fmt.Printf("Server failed: %s\n", err)
