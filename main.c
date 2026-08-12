@@ -9,7 +9,7 @@ int main() {
         printf("Store created with capacity: %zu\n", store->capacity);
     }
     //set data
-    for (int i = 0; i < 126; i++) {
+    for (int i = 0; i < 5; i++) {
         char key[20];
         char value[20];
         sprintf(key, "username%d", i);
