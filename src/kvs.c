@@ -21,13 +21,25 @@ KVSStore* kvs_create(size_t capacity) {
 
 void kvs_free(KVSStore *store) {
     if (!store) return;
+
+    for (size_t i = 0; i < store->capacity; i++) {
+        Node *current = store->buckets[i];
+        while (current != NULL) {
+            Node *next = current->next;
+            free(current->key);
+            free(current->value);
+            free(current);
+            current = next;
+        }
+    }
+
     free(store->buckets);
     free(store);
-    printf("Memory freed successfully!\n");
 }
- 
-//hashing function
+
+// Hashing function
 unsigned long hash_key(const char *key, size_t capacity) {
+    if (!key || capacity == 0) return 0;
     unsigned long hash = 5381;
     int c;
 
@@ -38,6 +50,7 @@ unsigned long hash_key(const char *key, size_t capacity) {
 
     return hash % capacity; 
 }
+
 // Helper function to resize and rehash the table when load factor exceeds threshold
 static int kvs_resize(KVSStore *store) {
     size_t new_capacity = store->capacity * 2;
@@ -61,7 +74,7 @@ static int kvs_resize(KVSStore *store) {
     return 1;
 }
 
-//set function
+// Set function
 int kvs_set(KVSStore *store, const char *key, const char *value) {
     if (!store || !key || !value) return 0;
 
@@ -106,7 +119,10 @@ int kvs_set(KVSStore *store, const char *key, const char *value) {
     store->size++;
     return 1; 
 }
+
 const char* kvs_get(KVSStore *store, const char *key) {
+    if (!store || !key) return NULL;
+
     unsigned long index = hash_key(key, store->capacity);
     Node *current = store->buckets[index];
 
@@ -119,35 +135,43 @@ const char* kvs_get(KVSStore *store, const char *key) {
 
     return NULL; 
 }
+
 int kvs_save(KVSStore *store, const char *filename) {
-    FILE *file = fopen(filename,"w");
-    if(!file)
-        return 0;
-    for (size_t i=0; i<store->capacity; i++){
+    if (!store || !filename) return 0;
+
+    FILE *file = fopen(filename, "w");
+    if (!file) return 0;
+
+    for (size_t i = 0; i < store->capacity; i++) {
         Node *current = store->buckets[i];
-        while (current != NULL){
-        fprintf(file, "%s=%s\n", current->key, current->value);
+        while (current != NULL) {
+            fprintf(file, "%s=%s\n", current->key, current->value);
             current = current->next;
         }
     }
+
     fclose(file);
     return 1;
 }
+
 int kvs_load(KVSStore *store, const char *filename) {
+    if (!store || !filename) return 0;
+
     FILE *file = fopen(filename, "r");
-    if(!file)
-    return 0;
+    if (!file) return 0;
+
     char line[1024];
-    while(fgets(line,sizeof(line),file)){
-        line[strcspn(line,'\n')] = 0;
-        char *eq = strchr(line,'=');
-        if(eq){
+    while (fgets(line, sizeof(line), file)) {
+        line[strcspn(line, "\r\n")] = 0;
+        char *eq = strchr(line, '=');
+        if (eq) {
             *eq = '\0';
-            char* key =line;
-            char *value= eq+1;
-            kvs_set(store,key,value);
+            char *key = line;
+            char *value = eq + 1;
+            kvs_set(store, key, value);
         }
     }
+
     fclose(file);
     return 1;
 }
