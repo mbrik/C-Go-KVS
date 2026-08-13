@@ -24,4 +24,8 @@ int kvs_set(KVSStore *store, const char *key, const char *value);
 
 const char* kvs_get(KVSStore *store, const char *key);
 
+int kvs_save(KVSStore *store, const char *filename);
+
+int kvs_load(KVSStore *store, const char *filename);
+
 #endif

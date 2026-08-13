@@ -119,3 +119,35 @@ const char* kvs_get(KVSStore *store, const char *key) {
 
     return NULL; 
 }
+int kvs_save(KVSStore *store, const char *filename) {
+    FILE *file = fopen(filename,"w");
+    if(!file)
+        return 0;
+    for (size_t i=0; i<store->capacity; i++){
+        Node *current = store->buckets[i];
+        while (current != NULL){
+        fprintf(file, "%s=%s\n", current->key, current->value);
+            current = current->next;
+        }
+    }
+    fclose(file);
+    return 1;
+}
+int kvs_load(KVSStore *store, const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if(!file)
+    return 0;
+    char line[1024];
+    while(fgets(line,sizeof(line),file)){
+        line[strcspn(line,'\n')] = 0;
+        char *eq = strchr(line,'=');
+        if(eq){
+            *eq = '\0';
+            char* key =line;
+            char *value= eq+1;
+            kvs_set(store,key,value);
+        }
+    }
+    fclose(file);
+    return 1;
+}
